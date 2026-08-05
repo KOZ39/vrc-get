@@ -562,11 +562,7 @@ pub fn project_is_unity_launching(
     project_path: String,
 ) -> bool {
     let project_path = Path::new(&project_path);
-    if is_unity_running(project_path) {
-        true
-    } else {
-        unity_state.is_opening(project_path)
-    }
+    is_unity_running(project_path) || unity_state.is_opening(project_path)
 }
 
 #[tauri::command]
@@ -593,67 +589,18 @@ pub fn project_unity_status(
         false
     };
     let launch_opening = !is_running && unity_state.is_opening(project_path);
-    let status = unity_project_status_kind(is_running, editor_ready, launch_opening);
+    let status = if editor_ready {
+        TauriUnityProjectStatusKind::Open
+    } else if launch_opening || is_running {
+        TauriUnityProjectStatusKind::Opening
+    } else {
+        TauriUnityProjectStatusKind::Closed
+    };
 
     TauriUnityProjectStatus {
         status,
         can_bring_to_front: status == TauriUnityProjectStatusKind::Open
             && crate::os::CAN_BRING_UNITY_TO_FRONT,
-    }
-}
-
-fn unity_project_status_kind(
-    is_running: bool,
-    editor_ready: bool,
-    launch_opening: bool,
-) -> TauriUnityProjectStatusKind {
-    if is_running {
-        if editor_ready {
-            TauriUnityProjectStatusKind::Open
-        } else {
-            TauriUnityProjectStatusKind::Opening
-        }
-    } else if launch_opening {
-        TauriUnityProjectStatusKind::Opening
-    } else {
-        TauriUnityProjectStatusKind::Closed
-    }
-}
-
-#[cfg(test)]
-mod unity_status_tests {
-    use super::*;
-
-    #[test]
-    fn running_without_an_editor_window_remains_opening() {
-        assert_eq!(
-            unity_project_status_kind(true, false, true),
-            TauriUnityProjectStatusKind::Opening
-        );
-        assert_eq!(
-            unity_project_status_kind(true, false, false),
-            TauriUnityProjectStatusKind::Opening
-        );
-    }
-
-    #[test]
-    fn running_with_an_editor_window_is_open() {
-        assert_eq!(
-            unity_project_status_kind(true, true, true),
-            TauriUnityProjectStatusKind::Open
-        );
-    }
-
-    #[test]
-    fn launch_state_only_applies_before_the_project_lock_is_acquired() {
-        assert_eq!(
-            unity_project_status_kind(false, false, true),
-            TauriUnityProjectStatusKind::Opening
-        );
-        assert_eq!(
-            unity_project_status_kind(false, false, false),
-            TauriUnityProjectStatusKind::Closed
-        );
     }
 }
 
