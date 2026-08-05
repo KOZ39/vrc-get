@@ -577,19 +577,11 @@ pub fn project_unity_status(
         unity_state.clear_opening(project_path);
     }
     let editor_ready = if !is_running {
-        unity_state.clear_editor_ready(project_path);
         false
     } else if !crate::os::CAN_DETECT_UNITY_EDITOR_READY {
-        unity_state.clear_opening(project_path);
-        true
-    } else if unity_state.is_editor_ready(project_path) {
-        true
-    } else if crate::os::is_unity_editor_ready(project_path) {
-        unity_state.mark_editor_ready(project_path.to_owned());
-        unity_state.clear_opening(project_path);
         true
     } else {
-        false
+        unity_state.is_editor_ready(project_path)
     };
     let launch_opening = !is_running && unity_state.is_opening(project_path);
     let status = if editor_ready {

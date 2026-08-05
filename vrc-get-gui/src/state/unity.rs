@@ -1,21 +1,35 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+#[cfg(windows)]
+use sysinfo::System;
+
 const UNITY_OPENING_TIMEOUT: Duration = Duration::from_secs(120);
+#[cfg(windows)]
+const UNITY_RUNTIME_CACHE_TTL: Duration = Duration::from_secs(1);
 
 #[derive(Clone)]
 pub struct UnityProjectState {
     opening: Arc<Mutex<HashMap<PathBuf, Instant>>>,
-    editor_ready: Arc<Mutex<HashSet<PathBuf>>>,
+    #[cfg(windows)]
+    runtime_cache: Arc<Mutex<UnityRuntimeCache>>,
+}
+
+#[cfg(windows)]
+struct UnityRuntimeCache {
+    system: System,
+    refreshed_at: Option<Instant>,
+    editor_ready_projects: Vec<PathBuf>,
 }
 
 impl UnityProjectState {
     pub fn new() -> Self {
         Self {
             opening: Arc::new(Mutex::new(HashMap::new())),
-            editor_ready: Arc::new(Mutex::new(HashSet::new())),
+            #[cfg(windows)]
+            runtime_cache: Arc::new(Mutex::new(UnityRuntimeCache::new())),
         }
     }
 
@@ -31,20 +45,24 @@ impl UnityProjectState {
         self.opening.lock().unwrap().remove(project_path);
     }
 
-    pub fn mark_editor_ready(&self, project_path: PathBuf) {
-        self.editor_ready.lock().unwrap().insert(project_path);
-    }
-
     pub fn is_editor_ready(&self, project_path: &Path) -> bool {
-        self.editor_ready.lock().unwrap().contains(project_path)
-    }
+        #[cfg(windows)]
+        {
+            return self
+                .runtime_cache
+                .lock()
+                .unwrap()
+                .is_editor_ready(project_path, Instant::now());
+        }
 
-    pub fn clear_editor_ready(&self, project_path: &Path) {
-        self.editor_ready.lock().unwrap().remove(project_path);
+        #[cfg(not(windows))]
+        {
+            let _ = project_path;
+            false
+        }
     }
 
     fn try_mark_opening_at(&self, project_path: PathBuf, now: Instant) -> bool {
-        self.clear_editor_ready(&project_path);
         let mut opening = self.opening.lock().unwrap();
         remove_expired(&mut opening, now);
 
@@ -53,6 +71,8 @@ impl UnityProjectState {
         }
 
         opening.insert(project_path, now);
+        drop(opening);
+        self.invalidate_runtime_cache();
         true
     }
 
@@ -60,6 +80,55 @@ impl UnityProjectState {
         let mut opening = self.opening.lock().unwrap();
         remove_expired(&mut opening, now);
         opening.contains_key(project_path)
+    }
+
+    fn invalidate_runtime_cache(&self) {
+        #[cfg(windows)]
+        self.runtime_cache.lock().unwrap().invalidate();
+    }
+}
+
+#[cfg(windows)]
+impl UnityRuntimeCache {
+    fn new() -> Self {
+        Self {
+            system: System::new(),
+            refreshed_at: None,
+            editor_ready_projects: Vec::new(),
+        }
+    }
+
+    fn is_editor_ready(&mut self, project_path: &Path, now: Instant) -> bool {
+        if self.should_refresh(now) {
+            self.refresh(now);
+        }
+
+        self.editor_ready_projects
+            .iter()
+            .any(|ready_project| crate::unity_process::paths_match(ready_project, project_path))
+    }
+
+    fn should_refresh(&self, now: Instant) -> bool {
+        self.refreshed_at.is_none_or(|refreshed_at| {
+            now.saturating_duration_since(refreshed_at) >= UNITY_RUNTIME_CACHE_TTL
+        })
+    }
+
+    fn refresh(&mut self, now: Instant) {
+        let processes = crate::unity_process::refresh_unity_processes(&mut self.system);
+        self.editor_ready_projects = match crate::os::find_unity_editor_ready_projects(processes) {
+            Ok(projects) => projects,
+            Err(error) => {
+                log::debug!("Checking which Unity editor windows are ready: {error}");
+                Vec::new()
+            }
+        };
+        self.refreshed_at = Some(now);
+    }
+
+    fn invalidate(&mut self) {
+        self.refreshed_at = None;
+        self.editor_ready_projects.clear();
     }
 }
 
@@ -106,25 +175,35 @@ mod tests {
     }
 
     #[test]
-    fn caches_and_clears_editor_ready_state() {
-        let state = UnityProjectState::new();
-        let project = PathBuf::from("project");
+    #[cfg(windows)]
+    fn runtime_cache_expires_after_its_ttl() {
+        let mut cache = UnityRuntimeCache::new();
+        let refreshed_at = Instant::now();
+        cache.refreshed_at = Some(refreshed_at);
 
-        state.mark_editor_ready(project.clone());
-        assert!(state.is_editor_ready(&project));
-
-        state.clear_editor_ready(&project);
-        assert!(!state.is_editor_ready(&project));
+        assert!(
+            !cache
+                .should_refresh(refreshed_at + UNITY_RUNTIME_CACHE_TTL - Duration::from_millis(1))
+        );
+        assert!(cache.should_refresh(refreshed_at + UNITY_RUNTIME_CACHE_TTL));
     }
 
     #[test]
-    fn starting_a_new_launch_clears_stale_editor_ready_state() {
+    #[cfg(windows)]
+    fn starting_a_new_launch_invalidates_runtime_cache() {
         let state = UnityProjectState::new();
         let project = PathBuf::from("project");
 
-        state.mark_editor_ready(project.clone());
+        {
+            let mut cache = state.runtime_cache.lock().unwrap();
+            cache.refreshed_at = Some(Instant::now());
+            cache.editor_ready_projects.push(project.clone());
+        }
+
         assert!(state.try_mark_opening(project.clone()));
 
-        assert!(!state.is_editor_ready(&project));
+        let cache = state.runtime_cache.lock().unwrap();
+        assert!(cache.refreshed_at.is_none());
+        assert!(cache.editor_ready_projects.is_empty());
     }
 }

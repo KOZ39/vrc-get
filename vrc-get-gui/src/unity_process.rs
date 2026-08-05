@@ -6,13 +6,28 @@ use std::path::{Component, Prefix};
 
 use sysinfo::{Process, ProcessRefreshKind, ProcessesToUpdate, System, UpdateKind};
 
+#[derive(Clone, Debug)]
+pub(crate) struct UnityProcess {
+    pub(crate) project_path: PathBuf,
+    pub(crate) process_id: u32,
+}
+
 pub(crate) fn find_unity_process_ids_for_project(project_path: &Path) -> Vec<u32> {
     let mut system = System::new();
+    refresh_unity_processes(&mut system)
+        .into_iter()
+        .filter_map(|process| {
+            paths_match(&process.project_path, project_path).then_some(process.process_id)
+        })
+        .collect()
+}
+
+pub(crate) fn refresh_unity_processes(system: &mut System) -> Vec<UnityProcess> {
     system.refresh_processes_specifics(
         ProcessesToUpdate::All,
         true,
         ProcessRefreshKind::nothing()
-            .with_cwd(UpdateKind::OnlyIfNotSet)
+            .with_cwd(UpdateKind::Always)
             .with_exe(UpdateKind::OnlyIfNotSet)
             .without_tasks(),
     );
@@ -26,7 +41,10 @@ pub(crate) fn find_unity_process_ids_for_project(project_path: &Path) -> Vec<u32
             }
 
             let process_project_path = process.cwd()?;
-            paths_match(process_project_path, project_path).then(|| process.pid().as_u32())
+            Some(UnityProcess {
+                project_path: process_project_path.to_owned(),
+                process_id: process.pid().as_u32(),
+            })
         })
         .collect()
 }
@@ -42,7 +60,7 @@ fn is_unity_name(name: &OsStr) -> bool {
     name.eq_ignore_ascii_case(OsStr::new("Unity"))
 }
 
-fn paths_match(left: &Path, right: &Path) -> bool {
+pub(crate) fn paths_match(left: &Path, right: &Path) -> bool {
     let left = comparable_path(left);
     let right = comparable_path(right);
 

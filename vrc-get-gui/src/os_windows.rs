@@ -15,7 +15,7 @@ use std::fs::OpenOptions;
 use std::io;
 use std::mem::MaybeUninit;
 use std::os::windows::prelude::*;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use tokio::process::Command;
 use windows::Win32::Foundation::{
@@ -33,6 +33,7 @@ use windows::Win32::UI::WindowsAndMessaging::{
 use windows::core::BOOL;
 
 use super::BringUnityToFrontResult;
+use crate::unity_process::{UnityProcess, paths_match};
 
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 const LOCK_RANGE_LOW: u32 = u32::MAX;
@@ -183,14 +184,63 @@ pub(crate) fn bring_unity_to_front(project_path: &Path) -> io::Result<BringUnity
     Ok(BringUnityToFrontResult::AttentionRequested)
 }
 
-pub(crate) fn is_unity_editor_ready(project_path: &Path) -> bool {
-    match find_unity_editor_window(project_path) {
-        Ok(window) => window.is_some(),
-        Err(error) => {
-            log::debug!("Checking whether the Unity editor window is ready: {error}");
-            false
-        }
+pub(crate) fn find_unity_editor_ready_projects(
+    processes: Vec<UnityProcess>,
+) -> io::Result<Vec<PathBuf>> {
+    if processes.is_empty() {
+        return Ok(Vec::new());
     }
+
+    let mut context = FindUnityWindowsContext {
+        processes,
+        editor_ready_projects: Vec::new(),
+    };
+    let context_pointer = &mut context as *mut FindUnityWindowsContext;
+
+    unsafe {
+        EnumWindows(
+            Some(find_unity_windows),
+            LPARAM(context_pointer.expose_provenance() as isize),
+        )?;
+    }
+
+    Ok(context.editor_ready_projects)
+}
+
+struct FindUnityWindowsContext {
+    processes: Vec<UnityProcess>,
+    editor_ready_projects: Vec<PathBuf>,
+}
+
+unsafe extern "system" fn find_unity_windows(window: HWND, parameter: LPARAM) -> BOOL {
+    let context_pointer =
+        std::ptr::with_exposed_provenance_mut::<FindUnityWindowsContext>(parameter.0 as usize);
+    let context = unsafe { &mut *context_pointer };
+
+    let mut process_id = 0;
+    unsafe {
+        GetWindowThreadProcessId(window, Some(&mut process_id));
+    }
+    let Some(process) = context
+        .processes
+        .iter()
+        .find(|process| process.process_id == process_id)
+    else {
+        return BOOL(1);
+    };
+
+    if unsafe { is_unity_editor_window(window) }
+        && !context
+            .editor_ready_projects
+            .iter()
+            .any(|project_path| paths_match(project_path, &process.project_path))
+    {
+        context
+            .editor_ready_projects
+            .push(process.project_path.clone());
+    }
+
+    BOOL(1)
 }
 
 fn find_unity_editor_window(project_path: &Path) -> io::Result<Option<HWND>> {
@@ -205,12 +255,16 @@ fn find_unity_editor_window(project_path: &Path) -> io::Result<Option<HWND>> {
         process_ids,
         window: None,
     };
+    let context_pointer = &mut context as *mut FindUnityWindowContext;
 
-    unsafe {
+    let enum_result = unsafe {
         EnumWindows(
             Some(find_unity_window),
-            LPARAM((&mut context as *mut FindUnityWindowContext) as isize),
-        )?;
+            LPARAM(context_pointer.expose_provenance() as isize),
+        )
+    };
+    if context.window.is_none() {
+        enum_result?;
     }
 
     Ok(context.window)
@@ -222,10 +276,9 @@ struct FindUnityWindowContext {
 }
 
 unsafe extern "system" fn find_unity_window(window: HWND, parameter: LPARAM) -> BOOL {
-    let context = unsafe { &mut *(parameter.0 as *mut FindUnityWindowContext) };
-    if context.window.is_some() {
-        return BOOL(1);
-    }
+    let context_pointer =
+        std::ptr::with_exposed_provenance_mut::<FindUnityWindowContext>(parameter.0 as usize);
+    let context = unsafe { &mut *context_pointer };
 
     let mut process_id = 0;
     unsafe {
@@ -233,6 +286,7 @@ unsafe extern "system" fn find_unity_window(window: HWND, parameter: LPARAM) -> 
     }
     if context.process_ids.contains(&process_id) && unsafe { is_unity_editor_window(window) } {
         context.window = Some(window);
+        return BOOL(0);
     }
 
     BOOL(1)
