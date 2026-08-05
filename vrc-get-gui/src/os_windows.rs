@@ -32,21 +32,12 @@ use windows::Win32::UI::WindowsAndMessaging::{
 };
 use windows::core::BOOL;
 
+use super::BringUnityToFrontResult;
+
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 const LOCK_RANGE_LOW: u32 = u32::MAX;
 const LOCK_RANGE_HIGH: u32 = u32::MAX;
 const UNITY_EDITOR_WINDOW_CLASS: &str = "UnityContainerWndClass";
-
-pub(crate) const CAN_BRING_UNITY_TO_FRONT: bool = true;
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[allow(dead_code)]
-pub(crate) enum BringUnityToFrontResult {
-    BroughtToFront,
-    AttentionRequested,
-    WindowNotFound,
-    Unsupported,
-}
 
 pub(crate) async fn start_command(
     name: &OsStr,

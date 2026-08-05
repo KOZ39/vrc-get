@@ -579,6 +579,9 @@ pub fn project_unity_status(
     let editor_ready = if !is_running {
         unity_state.clear_editor_ready(project_path);
         false
+    } else if !crate::os::CAN_DETECT_UNITY_EDITOR_READY {
+        unity_state.clear_opening(project_path);
+        true
     } else if unity_state.is_editor_ready(project_path) {
         true
     } else if crate::os::is_unity_editor_ready(project_path) {
