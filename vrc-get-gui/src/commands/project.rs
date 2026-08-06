@@ -602,10 +602,12 @@ pub fn project_unity_status(
 #[tauri::command]
 #[specta::specta]
 pub async fn project_bring_unity_to_front(
+    unity_state: State<'_, UnityProjectState>,
     project_path: String,
 ) -> Result<TauriUnityWindowActionResult, RustError> {
+    let unity_state = unity_state.inner().clone();
     let result = tokio::task::spawn_blocking(move || {
-        crate::os::bring_unity_to_front(Path::new(&project_path))
+        unity_state.bring_unity_to_front(Path::new(&project_path))
     })
     .await
     .map_err(|error| {
