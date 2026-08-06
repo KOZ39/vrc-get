@@ -159,7 +159,7 @@
     "projects:toast:project created": "專案已建立成功。",
 
     "projects:toast:opening unity...": "開啟 Unity 中 ...",
-    "projects:toast:unity attention requested": "無法直接將 Unity 移至前景，已透過工作列提示。",
+    "projects:toast:unity attention requested": "ALCOM 無法將 Unity 移至前景。",
     "projects:toast:unity window not found": "找不到此專案對應的 Unity 視窗。",
     "projects:toast:bring unity to front unsupported": "目前平台不支援將 Unity 移至前景。",
     "projects:dialog:unity not found": "找不到 Unity",

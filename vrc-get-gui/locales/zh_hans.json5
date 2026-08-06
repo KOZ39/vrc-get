@@ -153,7 +153,7 @@
     "projects:toast:project created": "项目创建成功",
 
     "projects:toast:opening unity...": "正在打开 Unity...",
-    "projects:toast:unity attention requested": "无法直接将 Unity 置于前台，已通过任务栏提示。",
+    "projects:toast:unity attention requested": "ALCOM 无法将 Unity 置于前台。",
     "projects:toast:unity window not found": "未找到此项目对应的 Unity 窗口。",
     "projects:toast:bring unity to front unsupported": "当前平台不支持将 Unity 置于前台。",
     "projects:dialog:unity not found": "Unity 不存在",
