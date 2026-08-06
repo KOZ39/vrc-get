@@ -62,31 +62,19 @@ fn is_unity_name(name: &OsStr) -> bool {
 }
 
 pub(crate) fn paths_match(left: &Path, right: &Path) -> bool {
-    let left = comparable_path(left);
-    let right = comparable_path(right);
-
-    #[cfg(windows)]
-    {
-        left.as_os_str().eq_ignore_ascii_case(right.as_os_str())
-    }
-
-    #[cfg(not(windows))]
-    {
-        left == right
-    }
+    comparable_path(left) == comparable_path(right)
 }
 
 fn comparable_path(path: &Path) -> PathBuf {
     let canonical = std::fs::canonicalize(path).unwrap_or_else(|_| PathBuf::from(path));
 
-    #[cfg(windows)]
-    {
-        normalize_windows_path(&canonical)
-    }
-
-    #[cfg(not(windows))]
-    {
-        canonical
+    cfg_select! {
+        windows => {
+            normalize_windows_path(&canonical)
+        }
+        _ => {
+            canonical
+        }
     }
 }
 
@@ -97,9 +85,8 @@ fn normalize_windows_path(path: &Path) -> PathBuf {
         return PathBuf::from(path);
     };
 
-    std::iter::once(normalize_first_component(first))
-        .chain(components.map(|component| PathBuf::from(component.as_os_str())))
-        .collect()
+    let normalized_first = normalize_first_component(first);
+    normalized_first.components().chain(components).collect()
 }
 
 #[cfg(windows)]
@@ -134,12 +121,26 @@ mod tests {
     }
 
     #[test]
-    #[cfg(windows)]
-    fn matches_windows_paths_case_insensitively_and_ignores_separator_differences() {
-        assert!(paths_match(
-            Path::new(r"C:\Projects\Avatar"),
-            Path::new(r"c:/projects/avatar/")
-        ));
+    fn matches_equivalent_existing_paths_after_canonicalization() {
+        let temporary_directory = tempfile::tempdir().unwrap();
+        let project_path = temporary_directory.path().join("Avatar");
+        let nested_path = project_path.join("Nested");
+        std::fs::create_dir_all(&nested_path).unwrap();
+
+        assert!(paths_match(&project_path, &nested_path.join("..")));
+    }
+
+    #[test]
+    fn follows_file_system_case_sensitivity() {
+        let temporary_directory = tempfile::tempdir().unwrap();
+        let project_path = temporary_directory.path().join("UnityCaseProbe");
+        let differently_cased_path = temporary_directory.path().join("unitycaseprobe");
+        std::fs::create_dir(&project_path).unwrap();
+
+        assert_eq!(
+            paths_match(&project_path, &differently_cased_path),
+            std::fs::canonicalize(&differently_cased_path).is_ok()
+        );
     }
 
     #[test]
