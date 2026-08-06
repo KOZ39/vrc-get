@@ -42,19 +42,15 @@ const LOCK_RANGE_LOW: u32 = u32::MAX;
 const LOCK_RANGE_HIGH: u32 = u32::MAX;
 const UNITY_EDITOR_WINDOW_CLASS: &str = "UnityContainerWndClass";
 const UNITY_RUNTIME_CACHE_TTL: Duration = Duration::from_secs(1);
+pub(crate) const CAN_BRING_UNITY_TO_FRONT: bool = true;
+pub(crate) const CAN_DETECT_UNITY_EDITOR_READY: bool = true;
 
 #[derive(Clone, Copy)]
-struct UnityEditorWindowHandle(usize);
+struct UnityEditorWindowHandle(HWND);
 
-impl UnityEditorWindowHandle {
-    fn new(window: HWND) -> Self {
-        Self(window.0.expose_provenance())
-    }
-
-    fn get(self) -> HWND {
-        HWND(std::ptr::with_exposed_provenance_mut(self.0))
-    }
-}
+// SAFETY: HWND is an opaque window identifier that Windows APIs allow using from
+// other threads. Unity owns the window, and the handle is validated before use.
+unsafe impl Send for UnityEditorWindowHandle {}
 
 struct UnityEditorWindow {
     project_path: PathBuf,
@@ -221,7 +217,7 @@ impl UnityRuntimeCache {
             return Ok(BringUnityToFrontResult::WindowNotFound);
         }
 
-        activate_unity_editor_window(window.get())
+        activate_unity_editor_window(window.0)
     }
 
     pub(crate) fn invalidate(&mut self) {
@@ -293,7 +289,7 @@ fn activate_unity_editor_window(window: HWND) -> io::Result<BringUnityToFrontRes
 }
 
 fn is_cached_unity_editor_window_valid(process_id: u32, window: UnityEditorWindowHandle) -> bool {
-    let window = window.get();
+    let window = window.0;
     let mut current_process_id = 0;
     unsafe {
         GetWindowThreadProcessId(window, Some(&mut current_process_id));
@@ -354,7 +350,7 @@ unsafe extern "system" fn find_unity_windows(window: HWND, parameter: LPARAM) ->
         context.editor_windows.push(UnityEditorWindow {
             project_path: process.project_path.clone(),
             process_id,
-            window: UnityEditorWindowHandle::new(window),
+            window: UnityEditorWindowHandle(window),
         });
     }
 
@@ -621,7 +617,7 @@ mod tests {
         cache.editor_windows.push(UnityEditorWindow {
             project_path: PathBuf::from("project"),
             process_id: 1,
-            window: UnityEditorWindowHandle(1),
+            window: UnityEditorWindowHandle(HWND::default()),
         });
 
         cache.invalidate();

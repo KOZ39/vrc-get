@@ -9,9 +9,6 @@ pub(crate) enum BringUnityToFrontResult {
     Unsupported,
 }
 
-pub(crate) const CAN_BRING_UNITY_TO_FRONT: bool = cfg!(any(windows, target_os = "macos"));
-pub(crate) const CAN_DETECT_UNITY_EDITOR_READY: bool = cfg!(windows);
-
 #[cfg(windows)]
 #[path = "os_windows.rs"]
 mod platform;

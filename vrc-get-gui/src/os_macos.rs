@@ -19,6 +19,9 @@ use std::task::{Context, Poll};
 
 use crate::os::BringUnityToFrontResult;
 
+pub(crate) const CAN_BRING_UNITY_TO_FRONT: bool = true;
+pub(crate) const CAN_DETECT_UNITY_EDITOR_READY: bool = false;
+
 pub(crate) fn bring_unity_to_front(project_path: &Path) -> io::Result<BringUnityToFrontResult> {
     let mut found_application = false;
 

@@ -1,9 +1,6 @@
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
-#[cfg(windows)]
-use std::path::{Component, Prefix};
-
 use sysinfo::{Process, ProcessRefreshKind, ProcessesToUpdate, System, UpdateKind};
 
 #[derive(Clone, Debug)]
@@ -12,7 +9,7 @@ pub(crate) struct UnityProcess {
     pub(crate) process_id: u32,
 }
 
-#[cfg(target_os = "macos")]
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 pub(crate) fn find_unity_process_ids_for_project(project_path: &Path) -> Vec<u32> {
     let mut system = System::new();
     refresh_unity_processes(&mut system)
@@ -90,7 +87,9 @@ fn normalize_windows_path(path: &Path) -> PathBuf {
 }
 
 #[cfg(windows)]
-fn normalize_first_component(component: Component<'_>) -> PathBuf {
+fn normalize_first_component(component: std::path::Component<'_>) -> PathBuf {
+    use std::path::{Component, Prefix};
+
     let Component::Prefix(prefix) = component else {
         return PathBuf::from(component.as_os_str());
     };
