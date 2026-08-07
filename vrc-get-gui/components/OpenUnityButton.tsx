@@ -100,13 +100,13 @@ export function OpenUnityButton({
 			switch (result) {
 				case "BroughtToFront":
 					break;
-				case "AttentionRequested":
+				case "FailedToBringToFront":
 					try {
 						await getCurrentWindow().setFocus();
 					} catch (error) {
 						console.error(error);
 					}
-					toastNormal(tc("projects:toast:unity attention requested"));
+					toastNormal(tc("projects:toast:bring unity to front failed"));
 					break;
 				case "WindowNotFound":
 					toastError(tc("projects:toast:unity window not found"));
@@ -139,18 +139,18 @@ export function OpenUnityButton({
 						{tc("projects:button:unity is open")}
 					</PreventDoubleClick>
 				);
+			} else {
+				return (
+					<PreventDoubleClick
+						delayMs={1000}
+						onClick={bringUnityToFront}
+						{...props}
+						disabled={disabled}
+					>
+						{tc("projects:button:bring unity to front")}
+					</PreventDoubleClick>
+				);
 			}
-
-			return (
-				<PreventDoubleClick
-					delayMs={1000}
-					onClick={bringUnityToFront}
-					{...props}
-					disabled={disabled}
-				>
-					{tc("projects:button:bring unity to front")}
-				</PreventDoubleClick>
-			);
 		default:
 			return (
 				<PreventDoubleClick

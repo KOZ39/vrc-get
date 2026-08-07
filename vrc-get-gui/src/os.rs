@@ -4,7 +4,7 @@
 #[allow(dead_code)]
 pub(crate) enum BringUnityToFrontResult {
     BroughtToFront,
-    AttentionRequested,
+    FailedToBringToFront,
     WindowNotFound,
     Unsupported,
 }

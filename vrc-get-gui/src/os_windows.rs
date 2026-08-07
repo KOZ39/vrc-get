@@ -285,7 +285,7 @@ fn activate_unity_editor_window(window: HWND) -> io::Result<BringUnityToFrontRes
         let _ = FlashWindowEx(&flash_info);
     }
 
-    Ok(BringUnityToFrontResult::AttentionRequested)
+    Ok(BringUnityToFrontResult::FailedToBringToFront)
 }
 
 fn is_cached_unity_editor_window_valid(process_id: u32, window: UnityEditorWindowHandle) -> bool {

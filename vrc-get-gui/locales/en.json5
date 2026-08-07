@@ -159,7 +159,7 @@
     "projects:toast:project created": "Project was created successfully.",
 
     "projects:toast:opening unity...": "Opening Unity...",
-    "projects:toast:unity attention requested": "ALCOM could not bring Unity to the foreground.",
+    "projects:toast:bring unity to front failed": "ALCOM could not bring Unity to the foreground.",
     "projects:toast:unity window not found": "No Unity window was found for this project.",
     "projects:toast:bring unity to front unsupported": "Bringing Unity to the front is not supported on this platform.",
     "projects:dialog:unity not found": "Unity was not found",

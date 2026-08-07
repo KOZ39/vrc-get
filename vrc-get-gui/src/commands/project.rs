@@ -483,7 +483,7 @@ pub struct TauriUnityProjectStatus {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, specta::Type)]
 pub enum TauriUnityWindowActionResult {
     BroughtToFront,
-    AttentionRequested,
+    FailedToBringToFront,
     WindowNotFound,
     Unsupported,
 }
@@ -618,8 +618,8 @@ pub async fn project_bring_unity_to_front(
         crate::os::BringUnityToFrontResult::BroughtToFront => {
             TauriUnityWindowActionResult::BroughtToFront
         }
-        crate::os::BringUnityToFrontResult::AttentionRequested => {
-            TauriUnityWindowActionResult::AttentionRequested
+        crate::os::BringUnityToFrontResult::FailedToBringToFront => {
+            TauriUnityWindowActionResult::FailedToBringToFront
         }
         crate::os::BringUnityToFrontResult::WindowNotFound => {
             TauriUnityWindowActionResult::WindowNotFound

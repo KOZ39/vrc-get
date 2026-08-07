@@ -401,7 +401,7 @@ export type TauriUnityVersions = {
 	install_recommended_version_link: string,
 };
 
-export type TauriUnityWindowActionResult = "BroughtToFront" | "AttentionRequested" | "WindowNotFound" | "Unsupported";
+export type TauriUnityWindowActionResult = "BroughtToFront" | "FailedToBringToFront" | "WindowNotFound" | "Unsupported";
 
 export type TauriUpdatedRealProjectInfo = {
 	path: string,
