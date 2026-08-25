@@ -24,9 +24,9 @@
     // Used in place of date part but not known
     "general:unknown date": "Unbekanntes Datum",
 
-    "general:dialog:select file or directory header": "Datei oder Ordner auswählen",
-    "general:dialog:select file or directory": "Bitte Datei oder Ordner auswählen.",
-    "general:toast:invalid directory": "Ungültiger Ordner wurde ausgewählt.",
+    "general:dialog:select file or directory header": "Datei oder Verzeichnis auswählen",
+    "general:dialog:select file or directory": "Bitte Datei oder Verzeichnis auswählen.",
+    "general:toast:invalid directory": "Ungültiges Verzeichnis wurde ausgewählt.",
     "general:toast:invalid file": "Ungültige Datei wurde ausgewählt.",
 
     "general:toast:not supported": "{{name}} wird noch nicht unterstützt.",
@@ -318,7 +318,7 @@
     "projects:manage:dialog:unity version conflicts_other": "Es gibt mehrere Unity Versionskonflikte",
     "projects:manage:dialog:package not supported your unity": "<b>{{pkg}}</b> unterstützt deine Unity Version nicht.",
     // TODO: plurals
-    "projects:manage:dialog:files and directories are removed as legacy": "Die folgenden veralteten Daten und Ordner werden entfernt",
+    "projects:manage:dialog:files and directories are removed as legacy": "Die folgenden veralteten Daten und Verzeichnisse werden entfernt",
     "projects:manage:dialog:packages installed in the following directories will be removed": "Pakete die in diesem Verzeichnis installiert sind werden entfernt.",
     "projects:manage:button:see changelog": "Changelog anzeigen",
     "projects:manage:button:apply changes": "Änderungen anwenden",
@@ -518,7 +518,7 @@
     "settings:files and directories:description": "Schneller Zugriff auf relevante Dateien und Verzeichnisse von ALCOM.",
     "settings:button:open settings.json": "settings.json",
     "settings:button:open gui config.json": "gui-config.json",
-    "settings:button:open logs": "Log Ordner",
+    "settings:button:open logs": "Log Verzeichnis",
     "settings:button:open vcc templates": "VCC Templates Directory",
 
     "settings:check update": "Suche nach Updates",
